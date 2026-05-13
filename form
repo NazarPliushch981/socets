@@ -1,0 +1,63 @@
+using System;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace ClientChat
+{
+    public partial class Form1 : Form
+    {
+        TcpClient client;
+
+        NetworkStream stream;
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private async void buttonConnect_Click(object sender, EventArgs e)
+        {
+            client = new TcpClient();
+
+            await client.ConnectAsync("127.0.0.1", 5000);
+
+            stream = client.GetStream();
+
+            string name = textBoxName.Text;
+
+            byte[] data = Encoding.UTF8.GetBytes(name);
+
+            await stream.WriteAsync(data, 0, data.Length);
+
+            MessageBox.Show("Connected");
+        }
+
+        private async void buttonSend_Click(object sender, EventArgs e)
+        {
+            string msg = textBoxMessage.Text;
+
+            byte[] data = Encoding.UTF8.GetBytes(msg);
+
+            await stream.WriteAsync(data, 0, data.Length);
+
+            textBoxMessage.Clear();
+        }
+
+        private async void buttonUpdate_Click(object sender, EventArgs e)
+        {
+            byte[] data = Encoding.UTF8.GetBytes("update");
+
+            await stream.WriteAsync(data, 0, data.Length);
+
+            byte[] buffer = new byte[5000];
+
+            int bytes = await stream.ReadAsync(buffer, 0, buffer.Length);
+
+            string chat = Encoding.UTF8.GetString(buffer, 0, bytes);
+
+            textBoxChat.Text = chat;
+        }
+    }
+}
