@@ -1,0 +1,95 @@
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ServerChat
+{
+    class Program
+    {
+        static TcpListener server;
+
+        static List<TcpClient> clients = new List<TcpClient>();
+        static List<string> messages = new List<string>();
+
+        static async Task Main(string[] args)
+        {
+            server = new TcpListener(IPAddress.Any, 5000);
+
+            server.Start();
+
+            Console.WriteLine("Server start");
+
+            while (true)
+            {
+                TcpClient client = await server.AcceptTcpClientAsync();
+
+                clients.Add(client);
+
+                _ = HandleClient(client);
+            }
+        }
+
+        static async Task HandleClient(TcpClient client)
+        {
+            NetworkStream stream = client.GetStream();
+
+            byte[] buffer = new byte[1024];
+
+            int bytes = await stream.ReadAsync(buffer, 0, buffer.Length);
+
+            string userName = Encoding.UTF8.GetString(buffer, 0, bytes);
+
+            string joinMessage = userName + " joined chat";
+
+            messages.Add(joinMessage);
+
+            Console.WriteLine(joinMessage);
+
+            while (true)
+            {
+                try
+                {
+                    buffer = new byte[1024];
+
+                    bytes = await stream.ReadAsync(buffer, 0, buffer.Length);
+
+                    if (bytes == 0)
+                        break;
+
+                    string text = Encoding.UTF8.GetString(buffer, 0, bytes);
+
+                    if (text == "update")
+                    {
+                        string all = "";
+
+                        foreach (string m in messages)
+                        {
+                            all += m + "\n";
+                        }
+
+                        byte[] data = Encoding.UTF8.GetBytes(all);
+
+                        await stream.WriteAsync(data, 0, data.Length);
+                    }
+                    else
+                    {
+                        string msg = "[" + userName + "]: " + text;
+
+                        messages.Add(msg);
+
+                        Console.WriteLine(msg);
+                    }
+                }
+                catch
+                {
+                    break;
+                }
+            }
+
+            client.Close();
+        }
+    }
+}
